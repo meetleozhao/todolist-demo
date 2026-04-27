@@ -1,6 +1,15 @@
 import { useState, useEffect } from 'react'
 
+const getTodayString = () => {
+  const d = new Date();
+  const year = d.getFullYear();
+  const month = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+};
+
 export default function App() {
+  const todayStr = getTodayString();
   // NFR9 [Reliability]: Persistence robustness 
   // Using lazy initialization to read from localStorage, wrapped in a try-catch to prevent corrupt data from crashing the app.
   const [todos, setTodos] = useState(() => {
@@ -140,11 +149,15 @@ export default function App() {
         </div>
 
         <ul className="space-y-2">
-          {visible.map((todo) => (
+          {visible.map((todo) => {
+            const isOverdue = todo.dueDate && todo.dueDate < todayStr && !todo.done;
+            return (
             // NFR5: Stable row layout - 'group' combined with 'min-h' ensures stable height
             <li
               key={todo.id}
-              className="group flex items-center gap-3 px-3 py-2 rounded-md border border-slate-200 hover:bg-slate-50 min-h-[3rem]"
+              className={`group flex items-center gap-3 px-3 py-2 rounded-md border min-h-[3rem] transition-colors ${
+                isOverdue ? 'border-red-300 bg-red-50 hover:bg-red-100' : 'border-slate-200 hover:bg-slate-50'
+              }`}
             >
               {editingId === todo.id ? (
                 // Edit Mode UI
@@ -195,12 +208,13 @@ export default function App() {
                     onClick={() => toggleTodo(todo.id)}
                     className={`flex-1 text-left flex items-center gap-2 ${todo.done ? 'line-through text-slate-400' : 'text-slate-800'
                       }`}
-                    aria-label={todo.done ? `Mark "${todo.text}" as incomplete` : `Mark "${todo.text}" as complete`}
+                    aria-label={todo.done ? `Mark "${todo.text}" as incomplete` : (isOverdue ? `Overdue: Mark "${todo.text}" as complete` : `Mark "${todo.text}" as complete`)}
                   >
+                    {isOverdue && <span className="sr-only">Overdue: </span>}
                     <span>{todo.text}</span>
                     {/* US-A2 / FR2: Display Due Date */}
                     {todo.dueDate && (
-                      <span className="text-xs px-2 py-0.5 bg-slate-200 text-slate-600 rounded-full font-medium">
+                      <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${isOverdue ? 'bg-red-200 text-red-700' : 'bg-slate-200 text-slate-600'}`}>
                         {todo.dueDate}
                       </span>
                     )}
@@ -226,7 +240,8 @@ export default function App() {
                 </>
               )}
             </li>
-          ))}
+            );
+          })}
           {visible.length === 0 && (
             <li className="text-center text-slate-400 py-4 text-sm">
               Nothing here.
